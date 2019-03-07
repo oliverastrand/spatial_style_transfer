@@ -9,3 +9,9 @@ The next goals for the project are right now:
     4. Change loss fuction to sum over loss function
     
 2. Be able to seperate the style by layers
+
+3. Turn this into an API such that you can use in an easy way
+
+4. Play around and create some fun images
+
+5. If we like that, approaching students at Tisch for a possible "collaboration"/dialog
