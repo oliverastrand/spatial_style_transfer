@@ -7,10 +7,12 @@ The next goals for the project are right now:
     2. Make lists into tensors    
     3. Make sure the that "layer_mask" (label in Oliver's Code) is updated correctly    
     4. Change loss fuction to sum over loss function
-    
-2. Be able to seperate the style by layers
 
-3. Turn this into an API such that you can use in an easy way
+2. Turn this into an API such that you can use in an easy way + move into one source folder
+    1. class: training
+    2. class: mask generator (circular, rectangle, etc.)
+
+3. Test if masks without only 1 and 0 also work
 
 4. Play around and create some fun images
 
