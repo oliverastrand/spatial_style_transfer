@@ -9,6 +9,25 @@ import copy
 from utils import get_image_loader, StyleLoss, ContentLoss, Normalization, imshow
 
 class StyleTransfer():
+	"""LEFT: description of class
+	
+	Attributes
+	----------
+	device : torch.device
+		The device on which the model will be used
+	cnn : torch.?????
+		
+	tractable_layer_names : set of str
+		A set of strings which indicates which layer is a convolution
+	content_layers : list of str
+		The list of which convolutional layers shall be considered in the content loss calculation
+	style_layers : list of str
+		The list of which convolutional layers shall be considered in the style loss calculation
+		
+	Methods
+	-------
+	
+	"""
 
     def __init__(self, pretrained_model=None, device=None, layers=None):
         
@@ -42,6 +61,25 @@ class StyleTransfer():
     
     def run_style_transfer(self, content_path, style_paths, spatial_mask=None, imsize=128, num_steps=300,
                        style_weight=1000000, content_weight=1):
+        """Executes style transfer on given image with given style images and masks.
+
+        Parameters
+        ----------
+        content_path : str
+            The path to the image on which the style transfer shall be executed
+        style_paths : list of str
+            The paths to the images which style shall be transfered
+        spatial_mask : torch.tensor, optional
+            The masks which determine in which area of the image which masks shall be applied (default is None)
+        imsize : int, optional
+            The image size (default is 128)
+		num_steps : int, optional
+			The number of steps which shall be executed for the style transfer (default is 300)
+		style_weight : int, optional
+			The weight of how much the loss in style transfer contributes to the overall loss (default is 1000000)
+		content_weight : int, optional
+			The weight of how much the loss in content preservation contributes to the overall loss (default is 1)
+        """
         
         image_loader = get_image_loader(imsize, self.device)
 
@@ -210,6 +248,21 @@ class StyleTransfer():
         return model, style_losses, content_losses
     
     def modify_layers(self, content_layers, style_layers):
+	"""Sets up the convolutional layers in the network which are used for content and style loss calculation.
+	
+	Parameters
+	----------
+	content_layers : list of str
+		The list of which convolutional layers shall be regarded in the content loss calculation
+	style_layers : list of str
+		The list of which convolutional layers shall be regarded in the style loss calculation
+	
+	Raises
+	------
+	ValueError
+		If any of specified content or style layers is not in the network
+	
+	"""
         
         if any([l not in self.tractable_layer_names for l in content_layers]):
             raise ValueError("One of content layers not in network")
@@ -220,6 +273,7 @@ class StyleTransfer():
         self.style_layers = style_layers
         
     def get_tractable_layer_names(self):
+		"""Returns a set of strings which give information which layer are convolutions """
         
         names = set()
         
