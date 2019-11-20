@@ -6,83 +6,66 @@ import torchvision.transforms as transforms
 from PIL import Image
 import matplotlib.pyplot as plt
 
+
 class ContentLoss(nn.Module):
 
     def __init__(self, target,):
         super(ContentLoss, self).__init__()
-        # we 'detach' the target content from the tree used
-        # to dynamically compute the gradient: this is a stated value,
-        # not a variable. Otherwise the forward method of the criterion
-        # will throw an error.
+        # The target is a constant value and should not be back-propagated through
         self.target = target.detach()
+        self.loss = 0
 
-    def forward(self, input):
-        if self.target.size() != input.size():
-            target = self.target.expand(input.size())
+    def forward(self, x_input):
+        
+        # Duplicate the tensor in case we have a batch of inputs
+        if self.target.size() != x_input.size():
+            target = self.target.expand(x_input.size())
         else:
             target = self.target
         
-        
-        self.loss = F.mse_loss(input, target)
-        return input
+        self.loss = F.mse_loss(x_input, target)
+
+        # The loss is saved and the input is forwarded through 
+        return x_input
 
 
-def gram_matrix(input, T):
-    a, b, c, d = input.size()  # a=batch size(=1)
+def gram_matrix(x_input, T):
+    a, b, c, d = x_input.size()  # a=batch size(=1)
     m, cp, dp = T.size()
 
+    # Make sure we have the right dimensions 
     assert cp == c and dp == d
-    # b=number of feature maps
-    # (c,d)=dimensions of a f. map (N=c*d)
-
 
     # Produce a spatial mask for the filter activations
-    #m1 = torch.ones((a * b, math.floor(c * d / 2)))
-    #m2 = torch.zeros((a * b, math.ceil(c * d / 2)))
-    #T = torch.cat((m1, m2), dim=1)
-    masked_input = torch.einsum('abcd,mcd->ambcd', [input, T])
+    masked_input = torch.einsum('abcd,mcd->ambcd', [x_input, T])
     masked_features = masked_input.view(a, m, b, c * d)
 
-    #features = input.view(a * b, c * d)  # resise F_XL into \hat F_XL
-
-    #masked_features = torch.mul(T.view(a * b, c * d), features)
-
-    #G = torch.mm(masked_features, masked_features.t())  # compute the gram product
+    # Compute the gram product
     G = torch.einsum('amik,amjk->amij', [masked_features, masked_features])
 
-    # we 'normalize' the values of the gram matrix
-    # by dividing by the number of element in each feature maps.
-
+    # We 'normalize' the values of the gram matrix
+    # by dividing by the number of elements in each feature maps.
     # Let gram_matrix output: batch x masks x spatial x spatial
     return G.div(b * c * d)
 
+
+# Extra function for computing the constant target Gram-matrix
 def target_gram(target_feature, T):
     m, b, c, d = target_feature.size()  # a=batch size(=1)
     mp, cp, dp = T.size()
 
+    # Make sure we have the right dimensions
     assert mp == m and cp == c and dp == d
-    # b=number of feature maps
-    # (c,d)=dimensions of a f. map (N=c*d)
-
 
     # Produce a spatial mask for the filter activations
-    #m1 = torch.ones((a * b, math.floor(c * d / 2)))
-    #m2 = torch.zeros((a * b, math.ceil(c * d / 2)))
-    #T = torch.cat((m1, m2), dim=1)
     masked_input = torch.einsum('mbcd,mcd->mbcd', [target_feature, T])
     masked_features = masked_input.view(m, b, c * d)
 
-    #features = input.view(a * b, c * d)  # resise F_XL into \hat F_XL
-
-    #masked_features = torch.mul(T.view(a * b, c * d), features)
-
-    #G = torch.mm(masked_features, masked_features.t())  # compute the gram product
+    # Compute the gram product
     G = torch.einsum('mik,mjk->mij', [masked_features, masked_features])
 
-
-    # we 'normalize' the values of the gram matrix
-    # by dividing by the number of element in each feature maps.
-
+    # We 'normalize' the values of the gram matrix
+    # by dividing by the number of elements in each feature maps.
     # Let gram_matrix output: batch x masks x spatial x spatial
     return G.div(b * c * d).unsqueeze(0)
 
@@ -93,35 +76,37 @@ class StyleLoss(nn.Module):
         super(StyleLoss, self).__init__()
         self.target = []
         self.mask = mask
-        #tf = torch.stack(target_feature).squeeze(1) # will have one too much dim
-
         self.target = target_gram(target_feature, mask).detach()
+        self.loss = 0
 
+    def forward(self, x_input):
 
-        #for k in range(len(target_feature)):
-        #    self.target.append(gram_matrix(target_feature[k], mask[k]).detach())
-        #    self.mask.append(mask[k])
+        G = gram_matrix(x_input, self.mask)
 
-    def forward(self, input):
-        self.loss=0
-        G = gram_matrix(input, self.mask)
-        #print(G.size())
-        #print(self.target.size())
-
+        # Make sure the target fits the batch size
         if self.target.size() != G.size():
             target = self.target.expand(G.size())
         else:
             target = self.target
+
         self.loss = F.mse_loss(G, target)
 
-        return input
+        # The loss is saved and the input is forwarded through
+        return x_input
     
-# create a module to normalize input image so we can easily put it in a
-# nn.Sequential
+
+# Create a module to normalize input image so we can easily put it in a nn.Sequential
 class Normalization(nn.Module):
-    def __init__(self, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
+    def __init__(self, mean=None, std=None):
         super(Normalization, self).__init__()
-        # .view the mean and std to make them [C x 1 x 1] so that they can
+
+        # Set default mean and std
+        if mean is None:
+            mean = [0.485, 0.456, 0.406]
+        if std is None:
+            std = [0.229, 0.224, 0.225]
+
+        # Reshape the mean and std to make them [C x 1 x 1] so that they can
         # directly work with image Tensor of shape [B x C x H x W].
         # B is batch size. C is number of channels. H is height and W is width.
         self.mean = torch.tensor(mean).view(-1, 1, 1)
@@ -142,18 +127,23 @@ def get_image_loader(imsize, device):
         image = loader(image).unsqueeze(0)
 
         return image.to(device, torch.float)
-    
+
+    # Returns a function that can load and transform an image from file
     return image_loader
 
 
 unloader = transforms.ToPILImage()  # reconvert into PIL image
 
+
 def imshow(tensor, title=None):
-    plt.ion() # Make sure we can plot right away
+    plt.ion()  # Make sure we can plot right away
+
     image = tensor.cpu().clone()  # we clone the tensor to not do changes on it
     image = image.squeeze(0)      # remove the fake batch dimension
     image = unloader(image)
+
     plt.imshow(image)
+
     if title is not None:
         plt.title(title)
-    plt.pause(0.001) # pause a bit so that plots are updated
+    plt.pause(0.001)  # pause a bit so that plots are updated
