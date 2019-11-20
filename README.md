@@ -1,4 +1,4 @@
-# mlart
+# Spatial Style Transfer
 This is a project for creating art using modern ML techniques. 
 
 ## Some interesting links
