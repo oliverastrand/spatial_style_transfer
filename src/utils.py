@@ -8,14 +8,35 @@ import matplotlib.pyplot as plt
 
 
 class ContentLoss(nn.Module):
+    """A class which holds the loss and the target image.
+    
+    Attributes
+    ----------
+    target : torch.tensor
+        The filter activations at a certain layer
+    loss : int
+        Size of the loss
+    
+    Methods
+    -------
+    forward(x_input)
+        Returns the mean squared difference between input and target attribute
+    """
 
-    def __init__(self, target,):
+    def __init__(self, target):
         super(ContentLoss, self).__init__()
         # The target is a constant value and should not be back-propagated through
         self.target = target.detach()
         self.loss = 0
 
     def forward(self, x_input):
+        """Returns the mean squared difference between input and target attribute
+        
+        Parameters
+        ----------
+        x_input : torch.tensor
+            Filter activations
+        """
         
         # Duplicate the tensor in case we have a batch of inputs
         if self.target.size() != x_input.size():
@@ -30,6 +51,16 @@ class ContentLoss(nn.Module):
 
 
 def gram_matrix(x_input, T):
+    """Computes gram matrix for x_input under consideration of the given masks.
+    
+    Parameters
+    ----------
+    x_input : torch.tensor
+        The tensor for which the gram matrix shall be computed. It is of the shape [a x b x c x d] where c and d are the same as in T, and a is the batch size.
+    T : torch.tensor
+        The masks for the spatial control in the style transfer. Tensor is of shape [ m x c x d] where c and d are the same as in x_input, and m is the number of masks.
+    """
+    
     a, b, c, d = x_input.size()  # a=batch size(=1)
     m, cp, dp = T.size()
 
@@ -49,8 +80,17 @@ def gram_matrix(x_input, T):
     return G.div(b * c * d)
 
 
-# Extra function for computing the constant target Gram-matrix
 def target_gram(target_feature, T):
+    """Computes gram matrix for target_feature under consideration of the given masks.
+    
+    Parameters
+    ----------
+    target_feature : torch.tensor
+        The tensor for which the gram matrix shall be computed. It is of the shape [a x b x c x d] where c and d are the same as in T, and a is the batch size.
+    T : torch.tensor
+        The masks for the spatial control in the style transfer. Tensor is of shape [ m x c x d] where c and d are the same as in target_feature, and m is the number of masks.
+    """
+    
     m, b, c, d = target_feature.size()  # a=batch size(=1)
     mp, cp, dp = T.size()
 
@@ -71,6 +111,22 @@ def target_gram(target_feature, T):
 
 
 class StyleLoss(nn.Module):
+    """A class which holds the loss and target Gram matrix.
+    
+    Attributes
+    ----------
+    target : torch.tensor
+        The gram matrices of the style images
+    mask : torch.tensor
+        The masks for the style images
+    loss : int
+        The loss
+    
+    Methods
+    -------
+    forward(x_input)
+        Returns the mean squared difference between input and target attribute.
+    """
 
     def __init__(self, target_feature, mask):
         super(StyleLoss, self).__init__()
@@ -80,6 +136,13 @@ class StyleLoss(nn.Module):
         self.loss = 0
 
     def forward(self, x_input):
+        """"Returns the mean squared difference between input and target attribute.
+        
+        Parameters
+        ----------
+        x_input : torch.tensor
+            Filter activations
+        """
 
         G = gram_matrix(x_input, self.mask)
 
@@ -95,8 +158,22 @@ class StyleLoss(nn.Module):
         return x_input
     
 
-# Create a module to normalize input image so we can easily put it in a nn.Sequential
 class Normalization(nn.Module):
+    """Is a module to normalize input image so one can easily put it in a nn.Sequential.
+    
+    Attributes
+    ----------
+    mean : torch.tensor
+        Tensor which holds the mean and is of the shape [C x 1 x 1] where C is the number of channels
+    std : torch.tensor
+        Tensor which holds the standard derivation and is of the shape [C x 1 x 1] where C is the number of channels
+    
+    Methods
+    -------
+    forward(img)
+        Returns normalization of image
+    """
+    
     def __init__(self, mean=None, std=None):
         super(Normalization, self).__init__()
 
@@ -113,11 +190,29 @@ class Normalization(nn.Module):
         self.std = torch.tensor(std).view(-1, 1, 1)
 
     def forward(self, img):
+        """Returns normalization of image
+        
+        Parameters
+        ----------
+        img : torch.tensor
+            The image which shall be normalized.        
+        """
+        
         # normalize img
         return (img - self.mean) / self.std
     
 
 def get_image_loader(imsize, device):
+    """Returns a function which loads a given image with a certain image size as torch.tensor.
+    
+    Parameters
+    ----------
+    imsize : int
+        The size to which the image loader shall load images
+    device : torch.device
+        The device on which the code is executed
+    """
+    
     loader = transforms.Compose([
         transforms.Resize(imsize),  # scale imported image
         transforms.ToTensor()])  # transform it into a torch tensor
@@ -136,6 +231,16 @@ unloader = transforms.ToPILImage()  # reconvert into PIL image
 
 
 def imshow(tensor, title=None):
+    """Shows given image
+    
+    Parameters
+    ----------
+    tensor : torch.tensor
+        The image as a tensor
+    title : string, optional
+        The title of the shown image (default is None)
+    """
+    
     plt.ion()  # Make sure we can plot right away
 
     image = tensor.cpu().clone()  # we clone the tensor to not do changes on it
