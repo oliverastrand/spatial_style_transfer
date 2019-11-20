@@ -15,8 +15,8 @@ class StyleTransfer():
 	----------
 	device : torch.device
 		The device on which the model will be used
-	cnn : torch.?????
-		
+	cnn : torch.nn.modules.container.Sequential
+		The used torch module as sequential
 	tractable_layer_names : set of str
 		A set of strings which indicates which layer is a convolution
 	content_layers : list of str
@@ -26,7 +26,14 @@ class StyleTransfer():
 		
 	Methods
 	-------
-	
+	run_style_transfer(content_path, style_paths, spatial_mask=None, imsize=128, num_steps=300, style_weight=1000000, content_weight=1)
+		Executes style transfer on given image with given style images and masks.
+	get_style_model_and_losses_lists(style_img, content_img, spatial_mask=None)
+		xxx
+	modify_layers(content_layers, style_layers)
+		Sets up the convolutional layers in the network which are used for content and style loss calculation.
+	get_tractable_layer_names():
+		Returns a set of strings which give information which layer are convolutions
 	"""
 
     def __init__(self, pretrained_model=None, device=None, layers=None):
@@ -69,7 +76,7 @@ class StyleTransfer():
             The path to the image on which the style transfer shall be executed
         style_paths : list of str
             The paths to the images which style shall be transfered
-        spatial_mask : torch.tensor, optional
+        spatial_mask : list torch.tensor, optional
             The masks which determine in which area of the image which masks shall be applied (default is None)
         imsize : int, optional
             The image size (default is 128)
@@ -139,6 +146,17 @@ class StyleTransfer():
     
     
     def get_style_model_and_losses_lists(self, style_img, content_img, spatial_mask=None):
+		"""Returns the model, content and style losses with implemented receptive averaging.
+		
+		Parameters
+		----------
+        style_img : list of torch.tensor
+            The images whose style shall be transfered
+		content_img : torch.tensor
+			The image on which the style transfer shall be executed
+        spatial_mask : list torch.tensor, optional
+            The masks which determine in which area of the image which masks shall be applied (default is None)
+		"""
     
         if spatial_mask is None:
             raise ValueError("A spatial mask must be provided")
@@ -261,7 +279,6 @@ class StyleTransfer():
 	------
 	ValueError
 		If any of specified content or style layers is not in the network
-	
 	"""
         
         if any([l not in self.tractable_layer_names for l in content_layers]):
