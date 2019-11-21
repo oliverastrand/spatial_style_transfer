@@ -6,7 +6,7 @@ import torchvision.models as models
 
 import copy
 
-from .utils import get_image_loader, StyleLoss, ContentLoss, Normalization
+from utils import get_image_loader, StyleLoss, ContentLoss, Normalization
 
 
 class StyleTransfer:

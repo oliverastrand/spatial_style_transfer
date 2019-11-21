@@ -37,8 +37,8 @@ def get_corner_mask(imsize, corner='upper_right'):
     ----------
     imsize : int
         The size of the image
-    corner : str
-        The corner in which to apply the mask:  'upper_right', 'upper_left',  'lower_left', 'lower_right'
+    corner : str, optional
+        The corner in which to apply the mask:  'upper_right', 'upper_left',  'lower_left', 'lower_right' (default is 'upper_right')
     """
     
     m1 = torch.ones((ceil(imsize/2), ceil(imsize/2)))
@@ -75,8 +75,8 @@ def get_side_mask(imsize, side='left'):
     ----------
     imsize : int
         The size of the image
-    side : str
-        The side on which to apply the mask: 'left', 'right', 'up', 'down'
+    side : str, optional
+        The side on which to apply the mask: 'left', 'right', 'up', 'down' (default is 'left')
     """
     
     mask1 = torch.ones(imsize, ceil(imsize/2))
